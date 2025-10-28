@@ -1,0 +1,26 @@
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	cnp := make(chan func(), 10)
+	for i := 0; i < 4; i++ {
+		go func() {
+			for f := range cnp {
+				f()
+			}
+		}()
+	}
+	cnp <- func() {
+		fmt.Println("HERE1")
+	}
+
+	close(cnp) // close channel
+
+	fmt.Println("Hello")
+
+	time.Sleep(time.Second) // let goroutines execute
+}

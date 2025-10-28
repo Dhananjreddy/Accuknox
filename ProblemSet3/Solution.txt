@@ -1,0 +1,23 @@
+Q. Explain what the following code is attempting to do? You can explain by:
+    1. Explaining how the highlighted constructs work?
+    2. Giving use-cases of what these constructs could be used for.
+    3. What is the significance of the for loop with 4 iterations?
+    4. What is the significance of make(chan func(), 10)?
+    5. Why is “HERE1” not getting printed?
+    (The code for the same is in question.go)
+
+A. 
+    1.  - The code makes a channel of functions, with a buffer of 10, so 10 functions can be pushed into the channel before it 
+          blocks, if the channel is not read from. (ln 6)
+        - It starts 4 Goroutines from the loop. Each Goroutine has a anonymous function that reads one function from the channel
+          at a time and calls it immediately. All 4 Goroutines range over the channel, reading all the functions until the channel
+          is empty (ln 7-13)
+        - An anonymous function is pushed into the channel, which prints "HERE1" to the console. (ln 14-16)
+        - "Hello" is printed to the console (ln 17)
+    2.  This construct can be used to concurrently execute tasks like process HTTP requests or read from files.
+    3.  I guess this signifies 4 CPU cores. Each Goroutine spawns on a core and simultaneous execution occurs (reading from cnp)
+    4.  It makes a channel of functions. It has a buffer of 10, so 10 functions can be pushed into the channel before the channel
+        blocks
+    5.  “HERE1” never prints because of the Goroutines. The main function never waits for the function call from cnp, it prints
+        "Hello" and exits. The channel will also block after the "HERE1" function is read because it is never closed in the 
+        Goroutines
