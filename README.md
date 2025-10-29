@@ -7,7 +7,6 @@ This repository contains my solutions for the Accuknox problem statements:
 ## Problem 1 — eBPF Packet Drop
 - Created an XDP-based eBPF program that inspects incoming packets.
 - If the packet is TCP and the destination port matches the configured port (default 4040), the packet is dropped.
-- Used a BPF map (BPF_MAP_TYPE_ARRAY) to store the port number, making it configurable from userspace.
 - Core logic:
   ```
   if (ip->protocol == IPPROTO_TCP) {
