@@ -1,5 +1,5 @@
 from bcc import BPF
-import sys
+import sys, time
 
 device = "eth0"
 if len(sys.argv) > 1:
@@ -15,32 +15,36 @@ bpf_program = f"""
 #include <linux/ip.h>
 #include <linux/tcp.h>
 
-SEC("xdp_drop_tcp_port")
-int xdp_drop_tcp_port(struct xdp_md *ctx) {{
-    void *data_end = (void *)(long)ctx->data_end;
+SEC("xdp")
+int xdp_drop_tcp_port(struct xdp_md *ctx)
+{{
     void *data = (void *)(long)ctx->data;
+    void *data_end = (void *)(long)ctx->data_end;
 
     struct ethhdr *eth = data;
-    if ((void*)(eth + 1) > data_end)
+
+    if (data + sizeof(struct ethhdr) > data_end)
         return XDP_PASS;
 
-    if (eth->h_proto != __constant_htons(ETH_P_IP))
-        return XDP_PASS;
+    if (bpf_ntohs(eth->h_proto) == ETH_P_IP)
+    {{
+        struct iphdr *iph = data + sizeof(struct ethhdr);
 
-    struct iphdr *ip = data + sizeof(*eth);
-    if ((void*)(ip + 1) > data_end)
-        return XDP_PASS;
+        if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end)
+            return XDP_PASS;
 
-    if (ip->protocol != IPPROTO_TCP)
-        return XDP_PASS;
+        if (iph->protocol == IPPROTO_TCP)
+        {{
+            int ip_hdr_len = iph->ihl * 4;
+            struct tcphdr *tcph = data + sizeof(struct ethhdr) + ip_hdr_len;
 
-    int ip_hdr_len = ip->ihl * 4;
-    struct tcphdr *tcp = data + sizeof(*eth) + ip_hdr_len;
-    if ((void*)(tcp + 1) > data_end)
-        return XDP_PASS;
+            if ((void *)tcph + sizeof(struct tcphdr) > data_end)
+                return XDP_PASS;
 
-    if (tcp->dest == __constant_htons({port}))
-        return XDP_DROP;
+            if (bpf_ntohs(tcph->dest) == {port})
+                return XDP_DROP;
+        }}
+    }}
 
     return XDP_PASS;
 }}
@@ -55,7 +59,7 @@ b.attach_xdp(device, fn, 0)
 print(f"Dropping TCP packets on port {port} via XDP on {device}")
 try:
     while True:
-        pass
+        time.sleep(1)
 except KeyboardInterrupt:
     b.remove_xdp(device, 0)
-    print("\nDetached XDP program.")
+    print("Detached XDP program.")
